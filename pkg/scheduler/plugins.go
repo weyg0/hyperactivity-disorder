@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/weyg0/hyperactivity-disorder/pkg/scheduler/policy"
+	"github.com/weyg0/hyperactivity-disorder/pkg/scheduler/preenqueue"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,13 +39,11 @@ func (ad *ActiveDefense) Name() string {
 func (ad *ActiveDefense) PreEnqueue(ctx context.Context, pod *v1.Pod) *framework.Status {
 	uid := pod.UID
 	if p, ok := policy.PodSet[uid]; ok { // 更新 Debt 和 Priority
-		p.Debt = policy.Time*p.MinSelectFreq - p.SelectedTimes
-		p.Priority = p.Weight/2*p.AoI*(p.AoI+2) + policy.V*math.Max(p.Debt, 0)
+		p.Debt = policy.Time*preenqueue.GetPodMinSelectFreq(pod) - p.SelectedTimes
+		p.Priority = preenqueue.GetPodWeight(pod)/2*p.AoI*(p.AoI+2) + policy.V*math.Max(p.Debt, 0)
 	} else { // 初始化 Pod
 		policy.PodSet[uid] = policy.Pod{
-			AoI:           1,
-			Weight:        1,
-			MinSelectFreq: 0.05,
+			AoI: 1,
 		}
 	}
 	return framework.NewStatus(framework.Success, "")

@@ -10,13 +10,16 @@ var (
 // Max-Weight policy
 type Pod struct {
 	Priority      float64
-	Weight        float64
 	AoI           float64 // Age of Information
 	Debt          float64 // Pod selection
 	SelectedTimes float64
-	MinSelectFreq float64
 }
 
+// Pod 常量
 const (
-	V = 1.0 // Trade-off between AoI and Debt
+	V                = 1.0            // Trade-off between AoI and Debt
+	PodWeight        = 1.0            // 默认权重
+	PodNumbers       = 20             // 总数
+	PodMinSelectFreq = 1 / PodNumbers // 默认最小选择频率
+
 )
