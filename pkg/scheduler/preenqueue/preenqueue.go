@@ -13,7 +13,7 @@ func GetPodWeight(pod *v1.Pod) float64 {
 		weight, _ := strconv.ParseFloat(w, 64)
 		return weight
 	}
-	klog.Errorf("[PreEnqueue] GetPodWeight Error. Labels: %v", pod.Labels)
+	klog.Errorf("[PreEnqueue]: GetPodWeight Error. Labels: %v", pod.Labels)
 	return policy.PodWeight
 }
 
@@ -22,6 +22,6 @@ func GetPodMinSelectFreq(pod *v1.Pod) float64 {
 		freq, _ := strconv.ParseFloat(f, 64)
 		return freq
 	}
-	klog.Errorf("[PreEnqueue] GetPodMinSelectFreq Error. Labels: %v", pod.Labels)
+	klog.Errorf("[PreEnqueue]: GetPodMinSelectFreq Error. Labels: %v", pod.Labels)
 	return policy.PodMinSelectFreq
 }

@@ -3,8 +3,7 @@ package policy
 import "k8s.io/apimachinery/pkg/types"
 
 var (
-	PodSet = map[types.UID]Pod{}
-	Time   = 0.0
+	Time = 0.0
 )
 
 // Max-Weight policy
@@ -15,7 +14,13 @@ type Pod struct {
 	SelectedTimes float64
 }
 
-// Pod 常量
+// Pod 全局变量
+var (
+	PodSet         = make(map[types.UID]Pod, PodNumbers)
+	PodInitialized = 0
+)
+
+// Pod 全局常量
 const (
 	V                = 1.0            // Trade-off between AoI and Debt
 	PodWeight        = 1.0            // 默认权重
