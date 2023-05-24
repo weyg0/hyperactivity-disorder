@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/weyg0/hyperactivity-disorder/pkg/scheduler/policy/podselection"
+	"github.com/weyg0/hyperactivity-disorder/pkg/scheduler/policy"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog"
+
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
@@ -25,32 +25,36 @@ type ActiveDefense struct {
 
 // 确保 ActiveDefense 实现调度框架接口
 var (
-	_ framework.QueueSortPlugin = &ActiveDefense{}
-	_ framework.ScorePlugin     = &ActiveDefense{}
-	_ framework.ScoreExtensions = &ActiveDefense{}
+	_ framework.PreEnqueuePlugin = &ActiveDefense{}
+	_ framework.QueueSortPlugin  = &ActiveDefense{}
+	_ framework.ScorePlugin      = &ActiveDefense{}
+	_ framework.ScoreExtensions  = &ActiveDefense{}
 )
 
 func (ad *ActiveDefense) Name() string {
 	return Name
 }
 
-func (ad *ActiveDefense) Less(pInfo1, pInfo2 *framework.QueuedPodInfo) bool {
-	nodeList, err := ad.handle.SnapshotSharedLister().NodeInfos().List()
-	if err != nil {
-		klog.Errorf("[QueueSortPlugin] Get NodeInfos List Error: %v", err)
-	}
-	for _, node := range nodeList {
-		for _, pod := range node.Pods {
-			uid := pod.Pod.UID
-			if _, ok := podselection.PodSet[uid]; ok {
-
-			}
+func (ad *ActiveDefense) PreEnqueue(ctx context.Context, pod *v1.Pod) *framework.Status {
+	uid := pod.UID
+	if p, ok := policy.PodSet[uid]; ok { // 更新 Debt 和 Priority
+		p.Debt = policy.Time*p.MinSelectFreq - p.SelectedTimes
+		p.Priority = p.Weight/2*p.AoI*(p.AoI+2) + policy.V*math.Max(p.Debt, 0)
+	} else { // 初始化 Pod
+		policy.PodSet[uid] = policy.Pod{
+			AoI:           1,
+			Weight:        1,
+			MinSelectFreq: 0.05,
 		}
 	}
-	// config.Test
-	podselection.PodSet[pInfo1.Pod.UID] = podselection.Pod{}
+	return framework.NewStatus(framework.Success, "")
+}
 
-	return true
+func (ad *ActiveDefense) Less(pInfo1, pInfo2 *framework.QueuedPodInfo) bool {
+	// 根据 Priority 选择最佳 Pod
+	p1 := policy.PodSet[pInfo1.Pod.UID]
+	p2 := policy.PodSet[pInfo2.Pod.UID]
+	return p1.Priority > p2.Priority
 }
 
 // Score invoked at the score extension point.
@@ -112,5 +116,6 @@ func (ad *ActiveDefense) NormalizeScore(ctx context.Context, state *framework.Cy
 
 // New initializes a new plugin and returns it.
 func New(_ runtime.Object, h framework.Handle) (framework.Plugin, error) {
+
 	return &ActiveDefense{handle: h}, nil
 }
