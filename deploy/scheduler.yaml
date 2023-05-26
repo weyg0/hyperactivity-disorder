@@ -26,6 +26,44 @@ data:
     - name: "active-defense"
       args: {"master": "master", "kubeconfig": "kubeconfig"}
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: active-defense
+  namespace: kube-system
+  labels:
+    component: active-defense
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: active-defense
+  template:
+    metadata:
+      labels:
+        component: active-defense
+    spec:
+      serviceAccount: active-defense-sa
+      priorityClassName: system-cluster-critical
+      volumes:
+        - name: scheduler-config
+          configMap:
+            name: scheduler-config
+      containers:
+        - name: active-defense-scheduler
+          image: weyg0/active-defense-scheduler:v0.0.6
+          imagePullPolicy: IfNotPresent
+          args:
+            - active-defense-scheduler
+            - --config=/scheduler/scheduler-config.yaml
+            - --v=3
+          resources:
+            requests:
+              cpu: "300m"
+          volumeMounts:
+            - name: scheduler-config
+              mountPath: /scheduler
+---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:

@@ -2,6 +2,6 @@ FROM debian:stretch-slim
 
 WORKDIR /
 
-COPY active-defense-scheduler-framework /usr/local/bin
+COPY active-defense-scheduler /usr/local/bin
 
-CMD ["active-defense-scheduler-framework"]
+CMD ["active-defense-scheduler"]
