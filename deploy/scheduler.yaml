@@ -1,57 +1,30 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: scheduler-config
-  namespace: kube-system
-data:
-  scheduler-config.yaml: |
-    apiVersion: kubescheduler.config.k8s.io/v1alpha1
-    kind: KubeSchedulerConfiguration
-    schedulerName: active-defense-scheduler
-    leaderElection:
-      leaderElect: true
-      lockObjectName: active-defense-scheduler
-      lockObjectNamespace: kube-system
-    plugins:
-      preEnqueue:
-        enabled:
-          - name: "active-defense"
-      queueSort:
-        enabled:
-        - name: "active-defense"
-      postBind:
-        enabled:
-        - name: "active-defense"
-    pluginConfig:
-    - name: "active-defense"
-      args: {"master": "master", "kubeconfig": "kubeconfig"}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: active-defense
+  name: active-defense-scheduler2
   namespace: kube-system
   labels:
-    component: active-defense
+    component: active-defense-scheduler2
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: active-defense
+      component: active-defense-scheduler2
   template:
     metadata:
       labels:
-        component: active-defense
+        component: active-defense-scheduler2
     spec:
       serviceAccount: active-defense-sa
       priorityClassName: system-cluster-critical
       volumes:
         - name: scheduler-config
           configMap:
-            name: scheduler-config
+            name: scheduler-config2
       containers:
         - name: active-defense-scheduler
-          image: weyg0/active-defense-scheduler:v0.0.6
+          image: weyg0/active-defense-scheduler:v0.1.1
           imagePullPolicy: IfNotPresent
           args:
             - active-defense-scheduler
@@ -74,10 +47,13 @@ rules:
     resources:
       - endpoints
       - events
+      - namespaces
     verbs:
       - create
       - get
       - update
+      - list
+      - watch
   - apiGroups:
       - ""
     resourceNames:
@@ -173,16 +149,18 @@ rules:
       - list
       - watch
   - apiGroups:
-      - "storage.k8s.io"
+      - storage.k8s.io
     resources:
       - storageclasses
       - csinodes
+      - csidrivers
+      - csistoragecapacities
     verbs:
       - watch
       - list
       - get
   - apiGroups:
-      - "coordination.k8s.io"
+      - coordination.k8s.io
     resources:
       - leases
     verbs:
@@ -191,7 +169,7 @@ rules:
       - list
       - update
   - apiGroups:
-      - "events.k8s.io"
+      - events.k8s.io
     resources:
       - events
     verbs:
@@ -199,7 +177,7 @@ rules:
       - patch
       - update
   - apiGroups:
-      - "core.run-linux.com"
+      - core.run-linux.com
     resources:
       - scvs
     verbs:
@@ -212,16 +190,46 @@ rules:
       - create
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-config2
+  namespace: kube-system
+data:
+  scheduler-config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1
+    kind: KubeSchedulerConfiguration
+    leaderElection:
+      leaderElect: true
+      resourceName: active-defense-scheduler
+    profiles:
+      - plugins:
+          preEnqueue:
+            enabled:
+              - name: "active-defense"
+            disabled:
+              - name: "*"
+          queueSort:
+            enabled:
+              - name: "active-defense"
+            disabled:
+              - name: "*"
+          postBind:
+            enabled:
+              - name: "active-defense"
+            disabled:
+              - name: "*"   
+        schedulerName: active-defense-scheduler 
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: active-defense-sa
   namespace: kube-system
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
 metadata:
   name: active-defense-crb
-  namespace: kube-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -230,3 +238,4 @@ subjects:
   - kind: ServiceAccount
     name: active-defense-sa
     namespace: kube-system
+
